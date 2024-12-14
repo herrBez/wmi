@@ -243,6 +243,14 @@ func (c *WmiSession) EnumerateReferencingInstances(namespaceName string, sourceI
 	panic("not implemented")
 }
 
+func (c *WmiSession) PerformRawAsyncQuery(eventSink *WmiEventSink, queryExpression string) (interface{}, error) {
+	rawResult, err := c.Session.CallMethod("ExecQueryAsync", eventSink.instance, queryExpression, "WQL")
+	if err != nil {
+		return nil, err
+	}
+	return GetVariantValue(rawResult)
+}
+
 func (c *WmiSession) PerformRawQuery(queryExpression string) (*ole.IEnumVARIANT, error) {
 	rawResult, err := c.Session.CallMethod("ExecQuery", queryExpression)
 	if err != nil {
