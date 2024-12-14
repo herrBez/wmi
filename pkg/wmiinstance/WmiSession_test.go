@@ -87,13 +87,13 @@ func Test_PerfromRawAsyncQuery(t *testing.T) {
 		return
 	}
 
-	// _, err = session.ExecNotificationQueryAsync(eventSink, "SELECT * FROM __InstanceCreationEvent WITHIN 0.1 WHERE TargetInstance ISA 'Win32_Process' and TargetInstance.Name = 'powershell.exe'")
+	// There is no way of setting Batching parameters, apparently, meaning that every element is returned by OnObjectPut
+	//  https://learn.microsoft.com/en-us/windows/win32/api/wbemprov/nf-wbemprov-iwbemeventsink-setbatchingparameters there is no "SWbem" equivalent on which go-ole is based
+	//
+	// _, err = eventSink.unknown.CallMethod("SetBatchingParameters", 0x1, 10)
 	// if err != nil {
-	// 	t.Errorf("CallMethod failed with error '%v'", err)
-	// 	return
+	// 	t.Errorf("Batching could not be set %v", err)
 	// }
-
-	eventSink.instance.CallMethod("SetBatchingParameters")
 
 	_, err = session.PerformRawAsyncQuery(eventSink, "SELECT * FROM Win32_ClassicCOMClassSettings")
 	if err != nil {
@@ -130,11 +130,13 @@ func Test_PerfromRawAsyncQuery(t *testing.T) {
 		case <-time.After(timeout):
 			t.Log("Timeout Reached")
 			completed = true
-			// The Cancel Method did not seem to work
-			_, err = eventSink.instance.CallMethod("Cancel")
-			if err != nil {
-				t.Errorf("Could not cancel %v", err)
-			}
+			// The Cancel Method does not seem to work. It hangs indefenitely
+			// _, err = eventSink.instance.CallMethod("Cancel")
+			// if err != nil {
+			// 	t.Errorf("Could not cancel %v", err)
+			// } else {
+			// 	t.Log("Cancel After timeout!")
+			// }
 		}
 		for eventSink.PeekAndDispatchMessages() {
 			// Continue pumping for message while they arrive
@@ -142,9 +144,10 @@ func Test_PerfromRawAsyncQuery(t *testing.T) {
 	}
 
 	t.Log("Exit from Main Loop")
-	eventSink.unknown.Release()
 
-	// This is the most important line!!!!
+	// Let's do manually the event Sink release, because it hangs
+	eventSink.unknown.Release()
+	// !!!! This is the most important line!!!! Without this it hangs indefintely
 	release(eventSink.unknown)
 	t.Log("Unknonw Released")
 
@@ -152,26 +155,8 @@ func Test_PerfromRawAsyncQuery(t *testing.T) {
 	eventSink.instance.Release()
 	t.Log("Exit Release")
 
-	// r, err := eventSink.instance.CallMethod("Cancel")
-	// if err != nil {
-	// 	t.Errorf("Error a: %v", err)
-	// } else {
-	// 	t.Log(r.ToString())
-	// }
-	//eventSink.PeekAndDispatchMessages()
-	t.Log("Exit EventSing")
-	eventSink.instance.Release()
-	t.Log("Exit Release")
-
 	eventSink.Close()
 
-	// res, err := eventSink.instance.CallMethod("Cancel")
-	// if err != nil {
-	// 	t.Errorf("Error %v", err)
-	// } else {
-	// 	t.Log(res.ToString())
-	// }
-
-	// Without timeout the elements should be 6k in my system
+	// Without timeout the elements should be 6k in my system, we fetch ~800 elements and give up
 	t.Logf("Fetched %d Elements Asyncrhonously with %d invokations", context.counter, context.invokation)
 }
