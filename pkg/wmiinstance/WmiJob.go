@@ -60,7 +60,7 @@ func (job *WmiJob) String() string {
 	if err != nil {
 		return ""
 	}
-	return fmt.Sprintf("Type[%s] State[%s]", jtype, job.GetJobState())
+	return fmt.Sprintf("Type[%d] State[%d]", jtype, job.GetJobState())
 }
 
 // GetJobType gets the value of JobType for the instance
