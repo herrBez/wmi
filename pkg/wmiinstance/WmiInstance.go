@@ -9,7 +9,10 @@ package cim
 import (
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
+	"github.com/microsoft/wmi/go/wmi"
 	"github.com/microsoft/wmi/pkg/base/host"
 	"github.com/microsoft/wmi/pkg/base/query"
 	"github.com/microsoft/wmi/pkg/errors"
@@ -111,6 +114,33 @@ func (c *WmiInstance) GetSystemProperty(name string) (*WmiProperty, error) {
 	return property, nil
 }
 
+func (c *WmiInstance) getWmiProperty(name string) (*WmiProperty, error) {
+	// Documentation: https://docs.microsoft.com/en-us/windows/win32/wmisdk/swbemobjectex-systemproperties-
+	rawResult, err := oleutil.GetProperty(c.instance, "Properties_")
+	if err != nil {
+		return nil, err
+	}
+
+	// SWbemObjectEx.SystemProperties_ returns
+	// an SWbemPropertySet object that contains the collection
+	// of sytem properties for the c class
+	sWbemObjectExAsIDispatch := rawResult.ToIDispatch()
+	defer rawResult.Clear()
+
+	// Get the system property
+	sWbemProperty, err := oleutil.CallMethod(sWbemObjectExAsIDispatch, "Item", name)
+	if err != nil {
+		return nil, err
+	}
+
+	property, err := CreateWmiProperty(sWbemProperty, c.session)
+	if err != nil {
+		return nil, err
+	}
+
+	return property, nil
+}
+
 // GetProperty gets the property of the instance specified by name and returns in value
 func (c *WmiInstance) GetProperty(name string) (interface{}, error) {
 	rawResult, err := oleutil.GetProperty(c.instance, name)
@@ -124,7 +154,34 @@ func (c *WmiInstance) GetProperty(name string) (interface{}, error) {
 		return nil, err
 	}
 
-	return GetVariantValue(rawResult)
+	val, err := GetVariantValue(rawResult)
+	if err != nil {
+		return nil, err
+	}
+
+	// If of type string, we fetch the property and perform the conversion
+	if rawResult.VT == ole.VT_BSTR {
+		p, err := c.getWmiProperty(name)
+		if err != nil {
+			return val, err
+		}
+		var tmp interface{}
+		switch p.Type() {
+		case wmi.WbemCimtypeUint64:
+			tmp, err = strconv.ParseUint(val.(string), 10, 64)
+		case wmi.WbemCimtypeSint64:
+			tmp, err = strconv.ParseInt(val.(string), 10, 64)
+		case wmi.WbemCimtypeDatetime:
+			layout := "20060102150405.999999-0700"
+			tmp, err = time.Parse(layout, val.(string)+"0")
+		}
+		if err != nil {
+			return val, err
+		}
+		val = tmp
+	}
+
+	return val, err
 }
 
 // SetProperty sets a value of property representation by name with value

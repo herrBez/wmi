@@ -421,9 +421,9 @@ func Test_GetRightType(t *testing.T) {
 	}
 	switch freePhysicalMemory.(type) {
 	case uint64:
-		t.Log("All good my fellow")
+		t.Log("freePhysicalMemory is an instance of uint64")
 	default:
-		t.Errorf("The runtime type should uint64")
+		t.Errorf("The runtime type of freePhysicalMemory should be uint64")
 	}
 	// datetime is returned as a string
 	installDate, err := instance.GetProperty("InstallDate")
@@ -439,3 +439,73 @@ func Test_GetRightType(t *testing.T) {
 	}
 
 }
+
+// func Test_ClusterWMI(t *testing.T) {
+// 	sessionManager := NewWmiSessionManager()
+// 	defer sessionManager.Dispose()
+
+// 	session, err := sessionManager.GetSession("Root\\MSCluster", "", "", "", "")
+// 	if err != nil {
+// 		t.Errorf("sessionManager.GetSession failed with error %v", err)
+// 		return
+// 	}
+
+// 	connected, err := session.Connect()
+
+// 	if !connected || err != nil {
+// 		t.Errorf("session.Connect failed with error %v", err)
+// 		return
+// 	}
+// 	defer session.Dispose()
+
+// 	clusterInstances, err := session.QueryInstances("SELECT * FROM MSCluster_Cluster")
+// 	if err != nil {
+// 		t.Errorf("session.QueryInstances failed with error %v", err)
+// 		return
+// 	}
+// 	defer CloseAllInstances(clusterInstances)
+
+// 	if len(clusterInstances) != 1 {
+// 		t.Errorf("session.QueryInstances returned (%v) processes where it should have returned 1", len(clusterInstances))
+// 		return
+// 	}
+
+// 	clusterInstance := clusterInstances[0]
+
+// 	clusterName, err := clusterInstance.GetProperty("Name");
+// 	if err != nil {
+// 		t.Errorf("clusterInstance.GetProperty failed with error %v", err)
+// 		return
+// 	} else {
+// 		t.Logf("Cluster name: %s", clusterName.(string))
+// 	}
+
+// 	nodeInstances, err := clusterInstance.GetRelated("MSCluster_Node")
+// 	if err != nil {
+// 		t.Errorf("session.GetRelated failed with error %v", err)
+// 		return
+// 	}
+// 	defer CloseAllInstances(nodeInstances)
+
+// 	t.Logf("------------------------------------------------------")
+
+// 	for _, nodeInstance := range nodeInstances {
+// 		nodeName, err := nodeInstance.GetProperty("Name");
+// 		if err != nil {
+// 			t.Errorf("nodeInstance.GetProperty failed with error %v", err)
+// 			return
+// 		} else {
+// 			t.Logf("Node name: %s", nodeName.(string))
+// 		}
+// 	}
+
+// 	t.Logf("------------------------------------------------------")
+// 	t.Logf("Clustering ClusterTestVM")
+
+// 	_, err = clusterInstance.InvokeMethod("AddVirtualMachine", "ClusterTestVM")
+// 	if err != nil {
+// 		t.Errorf("InvokeMethod \"AddVirtualMachine\" failed with error %v", err)
+// 		return
+// 	}
+
+// }
