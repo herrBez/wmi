@@ -6,6 +6,7 @@ package cim
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-ole/go-ole/oleutil"
 )
@@ -380,72 +381,61 @@ func Test_NewObjects(t *testing.T) {
 	}
 }
 
-// func Test_ClusterWMI(t *testing.T) {
-// 	sessionManager := NewWmiSessionManager()
-// 	defer sessionManager.Dispose()
+func Test_GetRightType(t *testing.T) {
+	sessionManager := NewWmiSessionManager()
+	defer sessionManager.Dispose()
 
-// 	session, err := sessionManager.GetSession("Root\\MSCluster", "", "", "", "")
-// 	if err != nil {
-// 		t.Errorf("sessionManager.GetSession failed with error %v", err)
-// 		return
-// 	}
+	session, err := sessionManager.GetLocalSession("ROOT\\CimV2")
 
-// 	connected, err := session.Connect()
+	if err != nil {
+		t.Errorf("sessionManager.GetSession failed with error %v", err)
+		return
+	}
 
-// 	if !connected || err != nil {
-// 		t.Errorf("session.Connect failed with error %v", err)
-// 		return
-// 	}
-// 	defer session.Dispose()
+	connected, err := session.Connect()
 
-// 	clusterInstances, err := session.QueryInstances("SELECT * FROM MSCluster_Cluster")
-// 	if err != nil {
-// 		t.Errorf("session.QueryInstances failed with error %v", err)
-// 		return
-// 	}
-// 	defer CloseAllInstances(clusterInstances)
+	if !connected || err != nil {
+		t.Errorf("session.Connect failed with error %v", err)
+		return
+	}
+	defer session.Close()
 
-// 	if len(clusterInstances) != 1 {
-// 		t.Errorf("session.QueryInstances returned (%v) processes where it should have returned 1", len(clusterInstances))
-// 		return
-// 	}
+	instances, err := session.QueryInstances("SELECT * FROM Win32_OperatingSystem")
+	if err != nil {
+		t.Errorf("session.QueryInstances failed with error %v", err)
+		return
+	}
+	defer CloseAllInstances(instances)
 
-// 	clusterInstance := clusterInstances[0]
+	if len(instances) != 1 {
+		t.Errorf("at least one value should be returned")
+		return
+	}
+	instance := instances[0]
 
-// 	clusterName, err := clusterInstance.GetProperty("Name");
-// 	if err != nil {
-// 		t.Errorf("clusterInstance.GetProperty failed with error %v", err)
-// 		return
-// 	} else {
-// 		t.Logf("Cluster name: %s", clusterName.(string))
-// 	}
+	// uint64 is returned as a string
+	freePhysicalMemory, err := instance.GetProperty("FreePhysicalMemory")
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	switch freePhysicalMemory.(type) {
+	case uint64:
+		t.Log("All good my fellow")
+	default:
+		t.Errorf("The runtime type should uint64")
+	}
+	// datetime is returned as a string
+	installDate, err := instance.GetProperty("InstallDate")
+	if err != nil {
+		t.Errorf("%v", err)
+		return
+	}
+	switch installDate.(type) {
+	case time.Time:
+		t.Log("installDate is an instance of time.Time")
+	default:
+		t.Errorf("The runtime type of installDate should time.Time")
+	}
 
-// 	nodeInstances, err := clusterInstance.GetRelated("MSCluster_Node")
-// 	if err != nil {
-// 		t.Errorf("session.GetRelated failed with error %v", err)
-// 		return
-// 	}
-// 	defer CloseAllInstances(nodeInstances)
-
-// 	t.Logf("------------------------------------------------------")
-
-// 	for _, nodeInstance := range nodeInstances {
-// 		nodeName, err := nodeInstance.GetProperty("Name");
-// 		if err != nil {
-// 			t.Errorf("nodeInstance.GetProperty failed with error %v", err)
-// 			return
-// 		} else {
-// 			t.Logf("Node name: %s", nodeName.(string))
-// 		}
-// 	}
-
-// 	t.Logf("------------------------------------------------------")
-// 	t.Logf("Clustering ClusterTestVM")
-
-// 	_, err = clusterInstance.InvokeMethod("AddVirtualMachine", "ClusterTestVM")
-// 	if err != nil {
-// 		t.Errorf("InvokeMethod \"AddVirtualMachine\" failed with error %v", err)
-// 		return
-// 	}
-
-// }
+}
